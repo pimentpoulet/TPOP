@@ -165,8 +165,6 @@ mirror_pos_norm_he_ne = convertUnits(mirror_pos_norm_he_ne,1e6)    # µm --> m
 indexes = getMaximumsIndexes(centerVectorAtZero(tension_he_ne))
 getWavelength(mirror_pos_norm_he_ne,indexes)
 
-# plotGraph(mirror_pos_norm,tension)
-
 
 """ POWER AND DISPLACEMENT MEASUREMENTS FOR HE-NE_1 LASER """
 
@@ -187,5 +185,3 @@ mirror_pos_norm = convertUnits(mirror_pos_norm,1e6)    # µm --> m
 
 indexes = getMaximumsIndexes(centerVectorAtZero(tension))
 getWavelength(mirror_pos_norm,indexes)
-
-# plotGraph(mirror_pos_norm,tension)
