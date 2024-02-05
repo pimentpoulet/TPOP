@@ -1,5 +1,5 @@
 import numpy as np
-import xlwings as xl
+import xlwings as xw
 import matplotlib.pyplot as plt
 import scipy.signal
 
@@ -90,7 +90,7 @@ def readVectorsFromExcelInterferometer(filename,col,rng):
 
 
 def readVectorsFromExcelSensor(filename,col,rng):
-    data = xl.Book(filename).sheets['sheet1']
+    data = xw.Book(filename).sheets['sheet1']
     x = data.range(f"{col[0]}{rng[0]}:{col[0]}{rng[1]}").value
     y = data.range(f"{col[1]}{rng[0]}:{col[1]}{rng[1]}").value
     z = data.range(f"{col[2]}{rng[0]}:{col[2]}{rng[1]}").value
@@ -145,15 +145,40 @@ def centerVectorAtZero(vector):
     return vector
 
 
-""" POWER AND DISPLACEMENT MEASUREMENTS """
+""" POWER AND DISPLACEMENT MEASUREMENTS FOR HE-NE_2 LASER """
 
-time = np.array(readVectorsFromExcelSensor("He-Ne_2.xlsx",col=["A","B","C"],rng=[19,178])[0])          # temps
-mirror_pos = np.array(readVectorsFromExcelSensor("He-Ne_2.xlsx",col=["A","B","C"],rng=[19,178])[1])    # mirror position
-tension = np.array(readVectorsFromExcelSensor("He-Ne_2.xlsx",col=["A","B","C"],rng=[19,178])[2])       # tension
+data_he_ne_2 = readVectorsFromExcelSensor("He-Ne_2.xlsx",col=["A","B","C"],rng=[19,520])
+
+time_he_ne = np.array(data_he_ne_2[0])          # temps
+mirror_pos_he_ne = np.array(data_he_ne_2[1])    # mirror position
+tension_he_ne = np.array(data_he_ne_2[2])       # tension
 
 # normalize vectors
-time_norm = normalizeVectors(time)  # time - time[0]
-mirror_pos_norm = normalizeVectors(mirror_pos)  # mirror_pos - mirror_pos[0]
+time_norm_he_ne = normalizeVectors(time_he_ne)
+mirror_pos_norm_he_ne = normalizeVectors(mirror_pos_he_ne)
+
+# transform vectors to have good units
+tension_he_ne = convertUnits(tension_he_ne,1000)                   # mV --> V
+time_norm_he_ne = convertUnits(time_norm_he_ne,1000)               # ms --> s
+mirror_pos_norm_he_ne = convertUnits(mirror_pos_norm_he_ne,1e6)    # µm --> m
+
+indexes = getMaximumsIndexes(centerVectorAtZero(tension_he_ne))
+getWavelength(mirror_pos_norm_he_ne,indexes)
+
+# plotGraph(mirror_pos_norm,tension)
+
+
+""" POWER AND DISPLACEMENT MEASUREMENTS FOR HE-NE_1 LASER """
+
+data_he_ne_1 = readVectorsFromExcelSensor("He-Ne_1.xlsx",col=["A","B","C"],rng=[19,524])
+
+time = np.array(data_he_ne_1[0])          # time
+mirror_pos = np.array(data_he_ne_1[1])    # mirror position
+tension = np.array(data_he_ne_1[2])       # tension
+
+# normalize vectors
+time_norm = normalizeVectors(time)
+mirror_pos_norm = normalizeVectors(mirror_pos)
 
 # transform vectors to have good units
 tension = convertUnits(tension,1000)                   # mV --> V
@@ -164,28 +189,3 @@ indexes = getMaximumsIndexes(centerVectorAtZero(tension))
 getWavelength(mirror_pos_norm,indexes)
 
 # plotGraph(mirror_pos_norm,tension)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
