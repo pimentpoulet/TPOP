@@ -1,6 +1,7 @@
 import numpy as np
 import xlwings as xl
 import matplotlib.pyplot as plt
+import scipy.signal
 
 from numpy.random import *
 from numpy.fft import *
@@ -92,31 +93,99 @@ def readVectorsFromExcelSensor(filename,col,rng):
     data = xl.Book(filename).sheets['sheet1']
     x = data.range(f"{col[0]}{rng[0]}:{col[0]}{rng[1]}").value
     y = data.range(f"{col[1]}{rng[0]}:{col[1]}{rng[1]}").value
+    z = data.range(f"{col[2]}{rng[0]}:{col[2]}{rng[1]}").value
     x = [float(val) for val in x]
     y = [float(val) for val in y]
-    return x, y
+    z = [float(val) for val in z]
+    return x, y, z
 
 
-x_spectrum_hg = np.array(readVectorsFromExcelInterferometer("Hg_spectrum01_mod.xlsx",col=["A","B"],rng=[1,651])[0])  # longueurs d'onde
-y_spectrum_hg = np.array(readVectorsFromExcelInterferometer("Hg_spectrum01_mod.xlsx",col=["A","B"],rng=[1,651])[1])  # puissance
+def normalizeVectors(vector):
+    return vector - vector[0]
 
-plt.plot(x_spectrum_hg, y_spectrum_hg)
-plt.show()
+
+def convertUnits(vector,unit):
+    """
+    unit is the SI unit used :
+    mV to V --> 1e3
+    V to mV --> 1e-3
+    nm to m --> 1e9
+    m to nm --> 1e-9
+    """
+    return vector/unit
+
+
+def getMaximumsIndexes(tension_vector):
+    return np.array(scipy.signal.argrelextrema(np.array(tension_vector),comparator=np.greater,order=2)).flatten()
+
+
+def plotGraph(x,y):
+    plt.plot(x,y)
+    plt.show()
+
+
+def getWavelength(vector,indexes):
+    maxs_mirror_pos_norm = list(vector[indexes])
+
+    pos_norm_diff = []
+    for i in range(len(maxs_mirror_pos_norm) - 1):
+        pos_norm_diff.append(maxs_mirror_pos_norm[i + 1] - maxs_mirror_pos_norm[i])
+
+    pos_norm_diff = np.array(pos_norm_diff)
+    wavelength = convertUnits(np.mean(pos_norm_diff),1e-9)    # wavelength in nm
+    print(wavelength)
+    return wavelength
+
+
+def centerVectorAtZero(vector):
+    if np.mean(vector) < 0:
+        vector = vector - np.mean(vector)
+    else:
+        vector = vector - np.mean(vector)
+    return vector
 
 
 """ POWER AND DISPLACEMENT MEASUREMENTS """
 
-x_donnees_hg = np.array(readVectorsFromExcelSensor("Hg_lampe_2.xlsx",col=["D","C"],rng=[19,178])[0])    # temps
-y_donnees_hg = np.array(readVectorsFromExcelSensor("Hg_lampe_2.xlsx",col=["D","C"],rng=[19,178])[1])    # tension
+time = np.array(readVectorsFromExcelSensor("He-Ne_2.xlsx",col=["A","B","C"],rng=[19,178])[0])          # temps
+mirror_pos = np.array(readVectorsFromExcelSensor("He-Ne_2.xlsx",col=["A","B","C"],rng=[19,178])[1])    # mirror position
+tension = np.array(readVectorsFromExcelSensor("He-Ne_2.xlsx",col=["A","B","C"],rng=[19,178])[2])       # tension
 
-# plt.plot(x_donnees_hg, y_donnees_hg)
-# plt.show()
+# normalize vectors
+time_norm = normalizeVectors(time)  # time - time[0]
+mirror_pos_norm = normalizeVectors(mirror_pos)  # mirror_pos - mirror_pos[0]
 
-data_hg = fourierTransformInterferogram(x_donnees_hg, y_donnees_hg)
-wavelengths_hg, frequencies_hg, spectrum_hg = data_hg[0], data_hg[1], data_hg[2]
+# transform vectors to have good units
+tension = convertUnits(tension,1000)                   # mV --> V
+time_norm = convertUnits(time_norm,1000)               # ms --> s
+mirror_pos_norm = convertUnits(mirror_pos_norm,1e6)    # µm --> m
 
-plt.plot(wavelengths_hg,spectrum_hg)
-# plt.show()
+indexes = getMaximumsIndexes(centerVectorAtZero(tension))
+getWavelength(mirror_pos_norm,indexes)
 
-# YOOOOOOO
-# yo les filles, c'est l'heure d'vous rouler la bille
+# plotGraph(mirror_pos_norm,tension)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
