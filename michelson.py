@@ -1,6 +1,7 @@
 import numpy as np
-import xlwings as xl
+import xlwings as xw
 import matplotlib.pyplot as plt
+import scipy.signal
 
 from numpy.random import *
 from numpy.fft import *
@@ -89,34 +90,98 @@ def readVectorsFromExcelInterferometer(filename,col,rng):
 
 
 def readVectorsFromExcelSensor(filename,col,rng):
-    data = xl.Book(filename).sheets['sheet1']
+    data = xw.Book(filename).sheets['sheet1']
     x = data.range(f"{col[0]}{rng[0]}:{col[0]}{rng[1]}").value
     y = data.range(f"{col[1]}{rng[0]}:{col[1]}{rng[1]}").value
+    z = data.range(f"{col[2]}{rng[0]}:{col[2]}{rng[1]}").value
     x = [float(val) for val in x]
     y = [float(val) for val in y]
-    return x, y
+    z = [float(val) for val in z]
+    return x, y, z
 
 
-x_spectrum_hg = np.array(readVectorsFromExcelInterferometer("Hg_spectrum01_mod.xlsx",col=["A","B"],rng=[1,651])[0])  # longueurs d'onde
-y_spectrum_hg = np.array(readVectorsFromExcelInterferometer("Hg_spectrum01_mod.xlsx",col=["A","B"],rng=[1,651])[1])  # puissance
-
-plt.plot(x_spectrum_hg, y_spectrum_hg)
-plt.show()
+def normalizeVectors(vector):
+    return vector - vector[0]
 
 
-""" POWER AND DISPLACEMENT MEASUREMENTS """
+def convertUnits(vector,unit):
+    """
+    unit is the SI unit used :
+    mV to V --> 1e3
+    V to mV --> 1e-3
+    nm to m --> 1e9
+    m to nm --> 1e-9
+    """
+    return vector/unit
 
-x_donnees_hg = np.array(readVectorsFromExcelSensor("Hg_lampe_2.xlsx",col=["D","C"],rng=[19,178])[0])    # temps
-y_donnees_hg = np.array(readVectorsFromExcelSensor("Hg_lampe_2.xlsx",col=["D","C"],rng=[19,178])[1])    # tension
 
-# plt.plot(x_donnees_hg, y_donnees_hg)
-# plt.show()
+def getMaximumsIndexes(tension_vector):
+    return np.array(scipy.signal.argrelextrema(np.array(tension_vector),comparator=np.greater,order=2)).flatten()
 
-data_hg = fourierTransformInterferogram(x_donnees_hg, y_donnees_hg)
-wavelengths_hg, frequencies_hg, spectrum_hg = data_hg[0], data_hg[1], data_hg[2]
 
-plt.plot(wavelengths_hg,spectrum_hg)
-# plt.show()
+def plotGraph(x,y):
+    plt.plot(x,y)
+    plt.show()
 
-# YOOOOOOO
 
+def getWavelength(vector,indexes):
+    maxs_mirror_pos_norm = list(vector[indexes])
+
+    pos_norm_diff = []
+    for i in range(len(maxs_mirror_pos_norm) - 1):
+        pos_norm_diff.append(maxs_mirror_pos_norm[i + 1] - maxs_mirror_pos_norm[i])
+
+    pos_norm_diff = np.array(pos_norm_diff)
+    wavelength = convertUnits(np.mean(pos_norm_diff),1e-9)    # wavelength in nm
+    return wavelength
+
+
+def centerVectorAtZero(vector):
+    if np.mean(vector) < 0:
+        vector = vector - np.mean(vector)
+    else:
+        vector = vector - np.mean(vector)
+    return vector
+
+
+""" POWER AND DISPLACEMENT MEASUREMENTS FOR HE-NE_1 LASER """
+
+data_he_ne_1 = readVectorsFromExcelSensor("He-Ne_1.xlsx",col=["A","B","C"],rng=[19,524])
+
+time = np.array(data_he_ne_1[0])          # time
+mirror_pos = np.array(data_he_ne_1[1])    # mirror position
+tension = np.array(data_he_ne_1[2])       # tension
+
+# normalize vectors
+time_norm = normalizeVectors(time)
+mirror_pos_norm = normalizeVectors(mirror_pos)
+
+# transform vectors to have good units
+tension = convertUnits(tension,1000)                   # mV --> V
+time_norm = convertUnits(time_norm,1000)               # ms --> s
+mirror_pos_norm = convertUnits(mirror_pos_norm,1e6)    # µm --> m
+
+indexes = getMaximumsIndexes(centerVectorAtZero(tension))
+
+print(f"La longueur d'onde du laser He-Ne 1 est {getWavelength(mirror_pos_norm,indexes)}")
+
+
+""" POWER AND DISPLACEMENT MEASUREMENTS FOR HE-NE_2 LASER """
+
+data_he_ne_2 = readVectorsFromExcelSensor("He-Ne_2.xlsx",col=["A","B","C"],rng=[19,520])
+
+time_he_ne = np.array(data_he_ne_2[0])          # temps
+mirror_pos_he_ne = np.array(data_he_ne_2[1])    # mirror position
+tension_he_ne = np.array(data_he_ne_2[2])       # tension
+
+# normalize vectors
+time_norm_he_ne = normalizeVectors(time_he_ne)
+mirror_pos_norm_he_ne = normalizeVectors(mirror_pos_he_ne)
+
+# transform vectors to have good units
+tension_he_ne = convertUnits(tension_he_ne,1000)                   # mV --> V
+time_norm_he_ne = convertUnits(time_norm_he_ne,1000)               # ms --> s
+mirror_pos_norm_he_ne = convertUnits(mirror_pos_norm_he_ne,1e6)    # µm --> m
+
+indexes = getMaximumsIndexes(centerVectorAtZero(tension_he_ne))
+print(f"La longueur d'onde du laser He-Ne 2 est {getWavelength(mirror_pos_norm_he_ne,indexes)}")
