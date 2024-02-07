@@ -111,7 +111,7 @@ def plotCombinedFigures(x, y, w, s, title="", left=400, right=800):
 # Spectre de lumiere blanche
 # Resolution ∆f = 1/(20000 µm * 20000)
 # Resolution @ 500 nm : ∆lambda = 500^2 * ∆f 
-(x,y) = generateWhiteLightInterferogram(xMin=-100, xMax=100, N=20000) # en microns
+(x,y) = generateHeNeInterferogram(xMin=-100, xMax=100, N=20000) # en microns
 (w, f, s)  = fourierTransformInterferogram(x,y)
 df = f[1]-f[0]
 dl = 0.500*0.500*df*1000 # resolution autour de 0.500 µm en nm
